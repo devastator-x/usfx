@@ -192,18 +192,18 @@ PYTHON API
 MODULE DESCRIPTIONS
 -------------------
 
-  dns_bruteforce  - Wordlist-based DNS queries (Medium)
-  zone_transfer   - AXFR zone transfer attempts (Fast)
-  dnssec_walker   - NSEC/NSEC3 zone walking (Fast)
-  dns_records     - MX/NS/TXT/SRV/SOA/CAA mining (Fast)
-  reverse_dns     - PTR lookups on IP ranges (Slow)
-  cname_chaser    - CNAME chain tracking (Fast)
-  permutation     - Subdomain variation generation (Medium)
-  recursive_enum  - Sub-subdomain discovery (Medium)
-  vhost_scanner   - Host header brute force (Slow)
-  tls_analyzer    - TLS certificate SAN extraction (Medium)
-  takeover        - Subdomain takeover detection (Fast)
-  web_tech        - Web technology detection (Medium)
+  dns_bruteforce   Wordlist-based DNS queries           Medium
+  zone_transfer    AXFR zone transfer attempts          Fast
+  dnssec_walker    NSEC/NSEC3 zone walking              Fast
+  dns_records      MX/NS/TXT/SRV/SOA/CAA mining         Fast
+  reverse_dns      PTR lookups on IP ranges             Slow
+  cname_chaser     CNAME chain tracking                 Fast
+  permutation      Subdomain variation generation       Medium
+  recursive_enum   Sub-subdomain discovery              Medium
+  vhost_scanner    Host header brute force              Slow
+  tls_analyzer     TLS certificate SAN extraction       Medium
+  takeover         Subdomain takeover detection         Fast
+  web_tech         Web technology detection             Medium
 
 
 REQUIREMENTS
