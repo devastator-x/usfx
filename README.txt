@@ -175,18 +175,6 @@ IT Asset Discovery:
     usfx internal.company -d 172.16.0.1 --reverse-range 172.16.0.0/16
 
 
-COMPARISON WITH WEB USF
------------------------
-
-                        USFX            Web USF
-  Internet Required     No              Yes
-  Custom DNS Servers    Yes             No
-  External APIs         No              CT Logs, Wayback, etc.
-  Database Storage      No              MySQL
-  Web Interface         No              Yes
-  Real-time Progress    CLI             WebSocket
-
-
 LICENSE
 -------
 
