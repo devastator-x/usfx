@@ -23,7 +23,7 @@ FEATURES
       * Virtual Host Discovery
       * TLS Certificate SAN Extraction
   - Multiple Output Formats: JSON, CSV, TXT
-  - Bundled Wordlists: Small (~500), Medium (~3500), Large (~10000)
+  - Bundled Wordlists: Small (~500), Medium (~3500), Large (~18000)
   - Progress Tracking: Real-time progress with Rich terminal UI
 
 
@@ -32,16 +32,20 @@ INSTALLATION
 
 From Source (Development):
 
-    cd /home/devastator/nextvt/usfx
+    git clone https://github.com/devastator-x/usfx.git
+    cd usfx
     python3 -m venv venv
     source venv/bin/activate
     pip install -e .
     usfx --version
 
+From PyPI (when available):
+
+    pip install usfx
+
 From Built Package:
 
-    python -m build
-    pip install dist/usfx-1.0.0-py3-none-any.whl
+    pip install dist/usfx-1.1.0-py3-none-any.whl
 
 
 QUICK START
