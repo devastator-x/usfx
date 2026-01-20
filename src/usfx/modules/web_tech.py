@@ -10,9 +10,16 @@ import logging
 import socket
 import ssl
 import urllib.request
+import warnings
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict, List, Optional, Set, TYPE_CHECKING
 from urllib.error import HTTPError, URLError
+
+# Suppress SSL warnings for security scanning
+warnings.filterwarnings('ignore', message='Unverified HTTPS request')
+warnings.filterwarnings('ignore', category=DeprecationWarning, module='Wappalyzer')
+warnings.filterwarnings('ignore', message='pkg_resources is deprecated')
+warnings.filterwarnings('ignore', message='Caught.*compiling regex')
 
 from .base import BaseModule
 
