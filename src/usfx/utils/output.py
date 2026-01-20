@@ -517,9 +517,7 @@ class ConsoleOutput:
             table.add_column("Technologies", style="yellow")
 
             for w in web_tech_results:
-                techs = ', '.join(w.technologies[:5]) if w.technologies else '-'
-                if len(w.technologies) > 5:
-                    techs += f' (+{len(w.technologies) - 5})'
+                techs = ', '.join(w.technologies) if w.technologies else '-'
                 title = (w.title[:27] + '...') if w.title and len(w.title) > 30 else (w.title or '-')
                 table.add_row(w.url, str(w.status), title, techs)
 
@@ -541,7 +539,7 @@ class ConsoleOutput:
             print("-" * 60)
 
             for w in web_tech_results:
-                techs = ', '.join(w.technologies[:5]) if w.technologies else '-'
+                techs = ', '.join(w.technologies) if w.technologies else '-'
                 print(f"  {w.url} [{w.status}]")
                 if w.title:
                     print(f"    Title: {w.title[:50]}")
