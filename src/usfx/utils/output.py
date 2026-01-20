@@ -241,14 +241,24 @@ class ConsoleOutput:
         if self.quiet:
             return
 
-        banner = f"""
- USFX v{version}
- Ultimate Subdomain Finder X for Internal Networks
+        ascii_art = r"""
+   __  __ _____ _______  __
+  / / / // ___// ____/ |/ /
+ / / / / \__ \/ /_   |   /
+/ /_/ / ___/ / __/  /   |
+\____/ /____/_/    /_/|_|
 """
+        subtitle = f"Ultimate Subdomain Finder X  v{version}"
+        tagline = "Internal Network Subdomain Discovery Tool"
+
         if self.use_rich:
-            self.console.print(banner, style="bold blue")
+            self.console.print(ascii_art, style="bold cyan", highlight=False)
+            self.console.print(f"  {subtitle}", style="bold white")
+            self.console.print(f"  {tagline}\n", style="dim")
         else:
-            print(banner)
+            print(ascii_art)
+            print(f"  {subtitle}")
+            print(f"  {tagline}\n")
 
     def print_config(self, domain: str, dns_servers: List[str], modules: List[str]) -> None:
         """Print scan configuration"""
