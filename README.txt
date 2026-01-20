@@ -192,18 +192,18 @@ PYTHON API
 MODULE DESCRIPTIONS
 -------------------
 
-  dns_bruteforce   Wordlist-based DNS queries           Medium
-  zone_transfer    AXFR zone transfer attempts          Fast
-  dnssec_walker    NSEC/NSEC3 zone walking              Fast
-  dns_records      MX/NS/TXT/SRV/SOA/CAA mining         Fast
-  reverse_dns      PTR lookups on IP ranges             Slow
-  cname_chaser     CNAME chain tracking                 Fast
-  permutation      Subdomain variation generation       Medium
-  recursive_enum   Sub-subdomain discovery              Medium
-  vhost_scanner    Host header brute force              Slow
-  tls_analyzer     TLS certificate SAN extraction       Medium
-  takeover         Subdomain takeover detection         Fast
-  web_tech         Web technology detection             Medium
+  dns_bruteforce  - Wordlist-based DNS queries (Medium)
+  zone_transfer   - AXFR zone transfer attempts (Fast)
+  dnssec_walker   - NSEC/NSEC3 zone walking (Fast)
+  dns_records     - MX/NS/TXT/SRV/SOA/CAA mining (Fast)
+  reverse_dns     - PTR lookups on IP ranges (Slow)
+  cname_chaser    - CNAME chain tracking (Fast)
+  permutation     - Subdomain variation generation (Medium)
+  recursive_enum  - Sub-subdomain discovery (Medium)
+  vhost_scanner   - Host header brute force (Slow)
+  tls_analyzer    - TLS certificate SAN extraction (Medium)
+  takeover        - Subdomain takeover detection (Fast)
+  web_tech        - Web technology detection (Medium)
 
 
 REQUIREMENTS
@@ -444,18 +444,18 @@ Python API
 모듈 설명
 ---------
 
-  dns_bruteforce   워드리스트 기반 DNS 쿼리           보통
-  zone_transfer    AXFR 존 전송 시도                  빠름
-  dnssec_walker    NSEC/NSEC3 존 워킹                 빠름
-  dns_records      MX/NS/TXT/SRV/SOA/CAA 마이닝       빠름
-  reverse_dns      IP 범위 PTR 룩업                   느림
-  cname_chaser     CNAME 체인 추적                    빠름
-  permutation      서브도메인 변형 생성               보통
-  recursive_enum   서브-서브도메인 탐지               보통
-  vhost_scanner    Host 헤더 브루트포스               느림
-  tls_analyzer     TLS 인증서 SAN 추출                보통
-  takeover         서브도메인 Takeover 탐지           빠름
-  web_tech         웹 기술 탐지                       보통
+  dns_bruteforce  - 워드리스트 기반 DNS 쿼리 (보통)
+  zone_transfer   - AXFR 존 전송 시도 (빠름)
+  dnssec_walker   - NSEC/NSEC3 존 워킹 (빠름)
+  dns_records     - MX/NS/TXT/SRV/SOA/CAA 마이닝 (빠름)
+  reverse_dns     - IP 범위 PTR 룩업 (느림)
+  cname_chaser    - CNAME 체인 추적 (빠름)
+  permutation     - 서브도메인 변형 생성 (보통)
+  recursive_enum  - 서브-서브도메인 탐지 (보통)
+  vhost_scanner   - Host 헤더 브루트포스 (느림)
+  tls_analyzer    - TLS 인증서 SAN 추출 (보통)
+  takeover        - 서브도메인 Takeover 탐지 (빠름)
+  web_tech        - 웹 기술 탐지 (보통)
 
 
 요구 사항
