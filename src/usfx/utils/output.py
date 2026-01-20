@@ -516,15 +516,12 @@ class ConsoleOutput:
             table.add_column("Title", style="white", max_width=30)
             table.add_column("Technologies", style="yellow")
 
-            for w in web_tech_results[:30]:
+            for w in web_tech_results:
                 techs = ', '.join(w.technologies[:5]) if w.technologies else '-'
                 if len(w.technologies) > 5:
                     techs += f' (+{len(w.technologies) - 5})'
                 title = (w.title[:27] + '...') if w.title and len(w.title) > 30 else (w.title or '-')
                 table.add_row(w.url, str(w.status), title, techs)
-
-            if len(web_tech_results) > 30:
-                table.add_row("...", "", f"({len(web_tech_results) - 30} more)", "")
 
             self.console.print(table)
 
@@ -543,15 +540,12 @@ class ConsoleOutput:
             print(f"\nWeb Technologies Detected: {len(web_tech_results)} servers")
             print("-" * 60)
 
-            for w in web_tech_results[:30]:
+            for w in web_tech_results:
                 techs = ', '.join(w.technologies[:5]) if w.technologies else '-'
                 print(f"  {w.url} [{w.status}]")
                 if w.title:
                     print(f"    Title: {w.title[:50]}")
                 print(f"    Tech: {techs}")
-
-            if len(web_tech_results) > 30:
-                print(f"  ... ({len(web_tech_results) - 30} more)")
 
     def create_progress(self):
         """Create a progress context manager"""

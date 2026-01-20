@@ -562,9 +562,15 @@ class SubdomainOrchestrator:
         timeout = self.config.timeout if self.config else 5.0
         web_ports = self.config.web_ports if self.config else [80, 443, 8080, 8443]
 
-        # Get current known subdomains
+        # Invalid IPs to filter out
+        INVALID_IPS = {'0.0.0.0', '127.0.0.1', '::1', '', None}
+
+        # Get current known subdomains (filter out invalid IPs)
         with self._results_lock:
-            known_subs = {k: v.get('ip') for k, v in self.state.discovered.items()}
+            known_subs = {
+                k: v.get('ip') for k, v in self.state.discovered.items()
+                if v.get('ip') not in INVALID_IPS
+            }
 
         if not known_subs:
             logger.info("No subdomains found for extended analysis")
