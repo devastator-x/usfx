@@ -22,8 +22,8 @@ FEATURES
       * Recursive Sub-subdomain Enumeration
       * Virtual Host Discovery
       * TLS Certificate SAN Extraction
-      * Subdomain Takeover Detection (NEW)
-      * Web Technology Detection with Wappalyzer (NEW)
+      * Subdomain Takeover Detection
+      * Web Technology Detection (Wappalyzer)
   - Pipeline Modes: Output formats for tool chaining (subs, web, ips, json)
   - Multiple Output Formats: JSON, CSV, TXT
   - Bundled Wordlists: Small (~500), Medium (~3500), Large (~18000)
@@ -93,18 +93,18 @@ Module Selection:
       takeover    - Subdomain takeover detection
       webtech     - Web technology detection
 
-Extended Scanning (NEW):
+Extended Scanning:
 
     # Subdomain takeover vulnerability detection
     usfx corp.local -d 10.0.0.1 --takeover
 
-    # Web technology detection (requires python-Wappalyzer)
+    # Web technology detection (optional: python-Wappalyzer)
     usfx corp.local -d 10.0.0.1 --web-tech
 
     # Custom web ports for tech detection
     usfx corp.local -d 10.0.0.1 --web-tech --web-ports 80,443,8080,8443
 
-Pipeline Modes (NEW):
+Pipeline Modes:
 
     # Output only subdomains (one per line) - pipe to other tools
     usfx corp.local -d 10.0.0.1 --pipe-subs | httpx
@@ -169,8 +169,8 @@ PYTHON API
         wordlist_size=WordlistSize.MEDIUM,
         threads=50,
         timeout=3.0,
-        takeover=True,      # Enable takeover detection
-        web_tech=True,      # Enable web tech detection
+        takeover=True,
+        web_tech=True,
     )
 
     engine = SubdomainEngine()
@@ -243,3 +243,255 @@ LICENSE
 -------
 
 MIT License - See LICENSE file for details.
+
+
+================================================================================
+                              한국어 (KOREAN)
+================================================================================
+
+
+USFX - Ultimate Subdomain Finder X
+===================================
+
+내부 네트워크에서 커스텀 DNS 서버를 사용하여 서브도메인을 탐지하는
+독립 실행형 Python CLI 도구입니다. 인터넷 연결이 없는 에어갭(Air-gapped)
+환경에서 사용할 수 있도록 설계되었습니다.
+
+
+기능
+----
+
+  - 커스텀 DNS 서버 지원: 내부 DNS 서버 지정 가능
+  - 오프라인 전용 모듈: 모든 기법이 인터넷 없이 작동
+  - 12개 열거 모듈:
+      * DNS 브루트포스
+      * Zone Transfer (AXFR)
+      * DNSSEC 워킹 (NSEC/NSEC3)
+      * DNS 레코드 마이닝 (MX, NS, TXT, SRV, SOA, CAA)
+      * 역방향 DNS 스윕
+      * CNAME 체인 분석
+      * 서브도메인 순열 생성
+      * 재귀적 서브-서브도메인 열거
+      * 가상 호스트 탐지
+      * TLS 인증서 SAN 추출
+      * 서브도메인 Takeover 탐지
+      * 웹 기술 탐지 (Wappalyzer)
+  - 파이프라인 모드: 다른 도구와 연동을 위한 출력 포맷 (subs, web, ips, json)
+  - 다중 출력 포맷: JSON, CSV, TXT
+  - 번들 워드리스트: Small (~500), Medium (~3500), Large (~18000)
+  - 진행 상황 추적: Rich 터미널 UI로 실시간 진행 표시
+
+
+설치
+----
+
+PyPI에서 설치 (권장):
+
+    pip install usfx
+
+    # Wappalyzer 웹 기술 탐지 지원 포함
+    pip install usfx[webtech]
+
+GitHub Releases에서 설치:
+
+    # 다운로드:
+    # https://github.com/devastator-x/usfx/releases/latest
+    pip install usfx-1.2.0-py3-none-any.whl
+
+소스에서 설치 (개발용):
+
+    git clone https://github.com/devastator-x/usfx.git
+    cd usfx
+    pip install -e .
+
+
+빠른 시작
+---------
+
+기본 사용법:
+
+    usfx corp.local                              # 시스템 DNS 사용
+    usfx corp.local -d 192.168.1.1               # 내부 DNS 지정
+    usfx corp.local -d 192.168.1.1 -d 10.0.0.1   # 다중 DNS 지정
+
+워드리스트 옵션:
+
+    usfx corp.local -d 10.0.0.1 -s small         # ~500 단어
+    usfx corp.local -d 10.0.0.1 -s medium        # ~3500 단어 (기본값)
+    usfx corp.local -d 10.0.0.1 -s large         # ~18000 단어
+    usfx corp.local -d 10.0.0.1 -w /path/to/custom.txt
+
+출력 옵션:
+
+    usfx corp.local -d 10.0.0.1 -o results.json
+    usfx corp.local -d 10.0.0.1 -o results.csv -f csv
+    usfx corp.local -d 10.0.0.1 -o results.txt -f txt
+
+모듈 선택:
+
+    usfx corp.local -d 10.0.0.1 -m bruteforce,zone,records
+
+    사용 가능한 모듈:
+      bruteforce  - 워드리스트 기반 DNS 브루트포스
+      zone        - Zone Transfer (AXFR)
+      dnssec      - DNSSEC 존 워킹
+      records     - DNS 레코드 마이닝
+      reverse     - 역방향 DNS 스윕
+      cname       - CNAME 체인 분석
+      permutation - 서브도메인 순열 생성
+      recursive   - 재귀적 서브-서브도메인 열거
+      vhost       - 가상 호스트 탐지
+      tls         - TLS 인증서 분석
+      takeover    - 서브도메인 Takeover 탐지
+      webtech     - 웹 기술 탐지
+
+확장 스캐닝:
+
+    # 서브도메인 Takeover 취약점 탐지
+    usfx corp.local -d 10.0.0.1 --takeover
+
+    # 웹 기술 탐지 (선택사항: python-Wappalyzer)
+    usfx corp.local -d 10.0.0.1 --web-tech
+
+    # 웹 기술 탐지 포트 지정
+    usfx corp.local -d 10.0.0.1 --web-tech --web-ports 80,443,8080,8443
+
+파이프라인 모드:
+
+    # 서브도메인만 출력 (한 줄에 하나) - 다른 도구로 파이프
+    usfx corp.local -d 10.0.0.1 --pipe-subs | httpx
+
+    # 웹 URL만 출력
+    usfx corp.local -d 10.0.0.1 --web-tech --pipe-web
+
+    # IP 주소만 출력
+    usfx corp.local -d 10.0.0.1 --pipe-ips | nmap -iL -
+
+    # JSON으로 stdout 출력 (jq 처리용)
+    usfx corp.local -d 10.0.0.1 --pipe-json | jq '.subdomains'
+
+고급 옵션:
+
+    usfx corp.local -d 10.0.0.1 -t 50 --timeout 5.0
+    usfx corp.local -d 10.0.0.1 --reverse-range 192.168.0.0/24
+    usfx corp.local -d 10.0.0.1 --vhost-ip 192.168.1.100
+    usfx corp.local -d 10.0.0.1 -v    # 상세 출력
+    usfx corp.local -d 10.0.0.1 -q    # 조용한 모드
+
+
+CLI 레퍼런스
+------------
+
+사용법: usfx [옵션] 도메인
+
+옵션:
+  -d, --dns-server TEXT       DNS 서버 IP (여러 번 지정 가능)
+  -w, --wordlist PATH         커스텀 워드리스트 파일
+  -s, --wordlist-size TEXT    워드리스트 크기: small|medium|large
+  -o, --output PATH           출력 파일 경로
+  -f, --format TEXT           출력 포맷: json|csv|txt
+  -t, --threads INTEGER       병렬 스레드 수 (기본: 30, 최대: 100)
+  --timeout FLOAT             DNS 타임아웃 (초, 기본: 3.0)
+  -m, --modules TEXT          쉼표로 구분된 모듈 목록
+  --reverse-range TEXT        역방향 DNS용 CIDR 범위
+  --vhost-ip TEXT             가상 호스트 스캐닝용 IP
+  --takeover                  서브도메인 Takeover 탐지 활성화
+  --web-tech                  웹 기술 탐지 활성화
+  --web-ports TEXT            웹 기술 스캐닝 포트 (기본: 80,443,8080,8443)
+  --pipe-subs                 파이프라인: 서브도메인만 출력
+  --pipe-web                  파이프라인: 웹 URL만 출력
+  --pipe-ips                  파이프라인: IP만 출력
+  --pipe-json                 파이프라인: JSON으로 stdout 출력
+  -v, --verbose               상세 출력
+  -q, --quiet                 불필요한 출력 숨김
+  --no-color                  색상 출력 비활성화
+  --version                   버전 표시
+  --help                      도움말 표시
+
+
+Python API
+----------
+
+    from usfx import ScanConfig, SubdomainEngine
+    from usfx.config import WordlistSize
+
+    config = ScanConfig(
+        domain='corp.internal',
+        dns_servers=['10.0.0.1', '10.0.0.2'],
+        wordlist_size=WordlistSize.MEDIUM,
+        threads=50,
+        timeout=3.0,
+        takeover=True,      # Takeover 탐지 활성화
+        web_tech=True,      # 웹 기술 탐지 활성화
+    )
+
+    engine = SubdomainEngine()
+    result = engine.scan(config)
+
+    print(f"{result.total_found}개 서브도메인 발견")
+    for sub in result.subdomains:
+        print(f"  {sub.subdomain} -> {sub.ip}")
+
+    # Takeover 취약점
+    for vuln in result.takeover_results:
+        print(f"  취약: {vuln.subdomain} -> {vuln.service}")
+
+    # 웹 기술
+    for web in result.web_tech_results:
+        print(f"  웹: {web.url} - {', '.join(web.technologies)}")
+
+
+모듈 설명
+---------
+
+  dns_bruteforce   워드리스트 기반 DNS 쿼리           보통
+  zone_transfer    AXFR 존 전송 시도                  빠름
+  dnssec_walker    NSEC/NSEC3 존 워킹                 빠름
+  dns_records      MX/NS/TXT/SRV/SOA/CAA 마이닝       빠름
+  reverse_dns      IP 범위 PTR 룩업                   느림
+  cname_chaser     CNAME 체인 추적                    빠름
+  permutation      서브도메인 변형 생성               보통
+  recursive_enum   서브-서브도메인 탐지               보통
+  vhost_scanner    Host 헤더 브루트포스               느림
+  tls_analyzer     TLS 인증서 SAN 추출                보통
+  takeover         서브도메인 Takeover 탐지           빠름
+  web_tech         웹 기술 탐지                       보통
+
+
+요구 사항
+---------
+
+  - Python 3.10+
+  - dnspython >= 2.4.0
+  - click >= 8.1.0
+  - requests >= 2.28.0
+  - cryptography >= 41.0.0
+  - rich >= 13.0.0
+
+선택사항:
+  - python-Wappalyzer >= 0.3.1 (웹 기술 탐지용)
+
+
+사용 사례
+---------
+
+내부 네트워크 침투 테스트:
+    usfx corp.internal -d 10.0.0.53 -s large --takeover -o findings.json
+
+Active Directory 정찰:
+    usfx ad.corp.local -d 192.168.1.1 -m records,reverse,zone
+
+IT 자산 탐지:
+    usfx internal.company -d 172.16.0.1 --reverse-range 172.16.0.0/16
+
+웹 애플리케이션 매핑:
+    usfx corp.local -d 10.0.0.1 --web-tech --pipe-web | httpx -silent
+
+도구 연동:
+    usfx corp.local --pipe-subs | nuclei -t takeovers/
+
+
+라이선스
+--------
+
+MIT License - 자세한 내용은 LICENSE 파일을 참조하세요.
