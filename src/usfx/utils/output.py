@@ -241,24 +241,52 @@ class ConsoleOutput:
         if self.quiet:
             return
 
-        ascii_art = r"""
-   __  __ _____ _______  __
-  / / / // ___// ____/ |/ /
- / / / / \__ \/ /_   |   /
-/ /_/ / ___/ / __/  /   |
-\____/ /____/_/    /_/|_|
-"""
-        subtitle = f"Ultimate Subdomain Finder X  v{version}"
-        tagline = "Internal Network Subdomain Discovery Tool"
-
         if self.use_rich:
-            self.console.print(ascii_art, style="bold cyan", highlight=False)
-            self.console.print(f"  {subtitle}", style="bold white")
-            self.console.print(f"  {tagline}\n", style="dim")
+            # Big ASCII art with gradient
+            art_lines = [
+                " ██╗   ██╗███████╗███████╗██╗  ██╗",
+                " ██║   ██║██╔════╝██╔════╝╚██╗██╔╝",
+                " ██║   ██║███████╗█████╗   ╚███╔╝ ",
+                " ██║   ██║╚════██║██╔══╝   ██╔██╗ ",
+                " ╚██████╔╝███████║██║     ██╔╝ ██╗",
+                "  ╚═════╝ ╚══════╝╚═╝     ╚═╝  ╚═╝",
+            ]
+
+            colors = [
+                "bright_cyan",
+                "cyan",
+                "bright_blue",
+                "blue",
+                "bright_magenta",
+                "magenta",
+            ]
+
+            self.console.print()
+            for i, line in enumerate(art_lines):
+                color = colors[i % len(colors)]
+                self.console.print(f"  [{color}]{line}[/{color}]", highlight=False)
+
+            self.console.print()
+            self.console.print(f"  [bold bright_white]Ultimate Subdomain Finder X[/bold bright_white]  [bright_yellow]v{version}[/bright_yellow]")
+            self.console.print(f"  [dim italic]Internal Network Subdomain Discovery Tool[/dim italic]")
+            self.console.print()
+            self.console.print(f"  [bright_green]◆[/bright_green] [dim]Offline Mode[/dim]  [bright_blue]◆[/bright_blue] [dim]Custom DNS[/dim]  [bright_magenta]◆[/bright_magenta] [dim]10 Modules[/dim]")
+            self.console.print()
         else:
+            ascii_art = r"""
+  ██╗   ██╗███████╗███████╗██╗  ██╗
+  ██║   ██║██╔════╝██╔════╝╚██╗██╔╝
+  ██║   ██║███████╗█████╗   ╚███╔╝
+  ██║   ██║╚════██║██╔══╝   ██╔██╗
+  ╚██████╔╝███████║██║     ██╔╝ ██╗
+   ╚═════╝ ╚══════╝╚═╝     ╚═╝  ╚═╝
+"""
             print(ascii_art)
-            print(f"  {subtitle}")
-            print(f"  {tagline}\n")
+            print(f"  Ultimate Subdomain Finder X  v{version}")
+            print(f"  Internal Network Subdomain Discovery Tool")
+            print()
+            print(f"  * Offline Mode  * Custom DNS  * 10 Modules")
+            print()
 
     def print_config(self, domain: str, dns_servers: List[str], modules: List[str]) -> None:
         """Print scan configuration"""
@@ -266,20 +294,18 @@ class ConsoleOutput:
             return
 
         if self.use_rich:
-            self.console.print(f"\n[bold]Target:[/bold] {domain}")
+            self.console.print(f"  [bold]Target:[/bold] [bright_white]{domain}[/bright_white]")
             if dns_servers:
-                self.console.print(f"[bold]DNS Servers:[/bold] {', '.join(dns_servers)}")
+                self.console.print(f"  [bold]DNS:[/bold]    [dim]{', '.join(dns_servers)}[/dim]")
             else:
-                self.console.print("[bold]DNS Servers:[/bold] system default")
-            self.console.print(f"[bold]Modules:[/bold] {', '.join(modules)}")
+                self.console.print(f"  [bold]DNS:[/bold]    [dim]system default[/dim]")
             self.console.print()
         else:
-            print(f"\nTarget: {domain}")
+            print(f"  Target: {domain}")
             if dns_servers:
-                print(f"DNS Servers: {', '.join(dns_servers)}")
+                print(f"  DNS:    {', '.join(dns_servers)}")
             else:
-                print("DNS Servers: system default")
-            print(f"Modules: {', '.join(modules)}")
+                print(f"  DNS:    system default")
             print()
 
     def print_phase(self, phase: str) -> None:

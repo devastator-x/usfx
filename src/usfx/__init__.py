@@ -6,8 +6,8 @@ using custom DNS servers. Designed for air-gapped environments without
 internet connectivity.
 """
 
-__version__ = "1.0.0"
-__author__ = "NEXTVT Team"
+__version__ = "1.1.0"
+__author__ = "LACRYMARIA Team"
 
 from .config import ScanConfig
 from .engine import SubdomainEngine

@@ -161,6 +161,16 @@ class SubdomainOrchestrator:
         """Run a single module as a task"""
         start_time = time.time()
 
+        # Check cancellation before starting
+        if self.state.is_cancelled:
+            return ModuleResult(
+                module_name=module_name,
+                found_count=0,
+                subdomains={},
+                duration_seconds=0,
+                error="cancelled"
+            )
+
         try:
             module = module_factory()
 
@@ -173,12 +183,24 @@ class SubdomainOrchestrator:
                     results = module.enumerate(known_hosts=known_subs)
                 elif module_name == "permutation":
                     def resolve(subdomain):
+                        if self.state.is_cancelled:
+                            return None
                         return self.resolver.resolve_a(subdomain)
                     results = module.enumerate(known_subs, resolver_func=resolve)
                 else:
                     results = module.enumerate(known_subs)
             else:
                 results = module.enumerate()
+
+            # Check cancellation after module completion
+            if self.state.is_cancelled:
+                return ModuleResult(
+                    module_name=module_name,
+                    found_count=0,
+                    subdomains={},
+                    duration_seconds=time.time() - start_time,
+                    error="cancelled"
+                )
 
             duration = time.time() - start_time
             self._add_results(results, module_name)
@@ -193,6 +215,14 @@ class SubdomainOrchestrator:
             )
 
         except Exception as e:
+            if self.state.is_cancelled:
+                return ModuleResult(
+                    module_name=module_name,
+                    found_count=0,
+                    subdomains={},
+                    duration_seconds=time.time() - start_time,
+                    error="cancelled"
+                )
             logger.error(f"Error in module {module_name}: {e}")
             return ModuleResult(
                 module_name=module_name,
@@ -213,12 +243,17 @@ class SubdomainOrchestrator:
         completed_count = 0
         total_modules = len(module_tasks)
 
+        if self.state.is_cancelled:
+            return results
+
         module_names = [name for _, name, _ in module_tasks]
         self._update_progress(phase, f"parallel: {', '.join(module_names)}", 0)
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures: Dict[Future, str] = {}
             for module_factory, module_name, kwargs in module_tasks:
+                if self.state.is_cancelled:
+                    break
                 future = executor.submit(
                     self._run_module_task,
                     module_factory,
@@ -228,6 +263,13 @@ class SubdomainOrchestrator:
                 futures[future] = module_name
 
             for future in as_completed(futures):
+                if self.state.is_cancelled:
+                    # Cancel remaining futures
+                    for f in futures:
+                        f.cancel()
+                    executor.shutdown(wait=False, cancel_futures=True)
+                    break
+
                 module_name = futures[future]
                 try:
                     result = future.result(timeout=300)
@@ -245,11 +287,6 @@ class SubdomainOrchestrator:
                 completed_count += 1
                 progress = int(completed_count * 100 / total_modules)
                 self._update_progress(phase, module_name, progress)
-
-                if self.state.is_cancelled:
-                    for f in futures:
-                        f.cancel()
-                    break
 
         return results
 
@@ -316,6 +353,9 @@ class SubdomainOrchestrator:
         wordlist_size = self.config.wordlist_size.value if self.config else 'medium'
         wordlist_path = str(self.config.custom_wordlist) if self.config and self.config.custom_wordlist else None
 
+        # Cancellation check function for modules
+        cancel_check = lambda: self.state.is_cancelled
+
         module_tasks = []
 
         if "dns_bruteforce" in enabled:
@@ -324,7 +364,8 @@ class SubdomainOrchestrator:
                     self.domain, self.resolver,
                     wordlist_path=wordlist_path,
                     wordlist_size=wordlist_size,
-                    threads=threads
+                    threads=threads,
+                    cancel_check=cancel_check
                 ),
                 "dns_bruteforce",
                 {}

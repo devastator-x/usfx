@@ -31,7 +31,8 @@ class DNSBruteforcer(BaseModule):
         wordlist_path: Optional[str] = None,
         wordlist_size: str = 'medium',
         threads: int = 30,
-        timeout: float = 2.0
+        timeout: float = 2.0,
+        cancel_check: Optional[Callable[[], bool]] = None
     ):
         """
         Initialize DNS brute forcer.
@@ -43,8 +44,9 @@ class DNSBruteforcer(BaseModule):
             wordlist_size: Size of bundled wordlist ('small', 'medium', 'large')
             threads: Number of parallel threads
             timeout: DNS query timeout
+            cancel_check: Optional function that returns True if cancelled
         """
-        super().__init__(domain, resolver, timeout)
+        super().__init__(domain, resolver, timeout, cancel_check)
 
         self.threads = threads
         self.wordlist_path = wordlist_path
@@ -84,12 +86,18 @@ class DNSBruteforcer(BaseModule):
         Returns:
             Dict of {subdomain: ip_address}
         """
+        if self.is_cancelled():
+            return self.discovered
+
         logger.info(f"Starting DNS brute force for {self.domain}")
 
         # Detect wildcards first
         has_wildcard, wildcard_ips = self.wildcard_detector.detect()
         if has_wildcard:
             logger.warning(f"Wildcard DNS detected for {self.domain}: {wildcard_ips}")
+
+        if self.is_cancelled():
+            return self.discovered
 
         # Load wordlist
         wordlist = self.wordlist_manager.get_wordlist(
@@ -112,8 +120,17 @@ class DNSBruteforcer(BaseModule):
             }
 
             for future in as_completed(futures):
+                # Check for cancellation
+                if self.is_cancelled():
+                    # Cancel remaining futures and exit
+                    for f in futures:
+                        f.cancel()
+                    executor.shutdown(wait=False, cancel_futures=True)
+                    logger.info("DNS brute force cancelled")
+                    return self.discovered
+
                 try:
-                    fqdn, ip, all_ips = future.result()
+                    fqdn, ip, all_ips = future.result(timeout=self.timeout + 1)
                     completed += 1
 
                     if ip:

@@ -6,11 +6,18 @@ Supports custom DNS servers for internal network enumeration.
 """
 
 import logging
+import os
+import signal
 import sys
+import threading
 from pathlib import Path
 from typing import List, Optional, Tuple
 
 import click
+
+# Global state for signal handling
+_current_engine = None
+_interrupted = False
 
 from . import __version__
 from .config import OutputFormat, ScanConfig, WordlistSize
@@ -260,29 +267,61 @@ def main(
     )
 
     # Create engine and run scan
+    global _current_engine, _interrupted
     engine = SubdomainEngine()
+    _current_engine = engine
+    _interrupted = False
+
+    # Signal handler for Ctrl+C
+    def signal_handler(signum, frame):
+        global _interrupted
+        if _interrupted:
+            # Second Ctrl+C - force exit immediately
+            if not quiet:
+                click.echo("\nForce exit.", err=True)
+            os._exit(130)
+
+        _interrupted = True
+        if not quiet:
+            click.echo("\n\nInterrupted. Stopping scan...", err=True)
+
+        if _current_engine:
+            _current_engine.cancel_scan()
+
+    # Register signal handler
+    original_handler = signal.signal(signal.SIGINT, signal_handler)
 
     # Progress tracking
     last_phase = None
 
     def progress_callback(state):
         nonlocal last_phase
+        if _interrupted:
+            return
         if state.current_phase and state.current_phase != last_phase:
             console.print_phase(state.current_phase.value)
             last_phase = state.current_phase
 
     try:
         result = engine.scan(config, progress_callback=progress_callback if not quiet else None)
+
+        if _interrupted:
+            sys.exit(130)
+
     except KeyboardInterrupt:
-        console.print_error("Scan cancelled by user")
-        engine.cancel_scan()
+        if not quiet:
+            click.echo("\nScan cancelled.", err=True)
         sys.exit(130)
     except Exception as e:
-        console.print_error(f"Scan failed: {e}")
-        if verbose:
-            import traceback
-            traceback.print_exc()
+        if not _interrupted:
+            console.print_error(f"Scan failed: {e}")
+            if verbose:
+                import traceback
+                traceback.print_exc()
         sys.exit(1)
+    finally:
+        signal.signal(signal.SIGINT, original_handler)
+        _current_engine = None
 
     # Print results
     console.print_result_table(result)

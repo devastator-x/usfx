@@ -6,8 +6,9 @@ Provides common functionality and interface contract.
 """
 
 import logging
+import threading
 from abc import ABC, abstractmethod
-from typing import Dict, Optional, TYPE_CHECKING
+from typing import Callable, Dict, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..utils.dns_resolver import InternalDNSResolver
@@ -35,7 +36,8 @@ class BaseModule(ABC):
         self,
         domain: str,
         resolver: Optional['InternalDNSResolver'] = None,
-        timeout: float = 3.0
+        timeout: float = 3.0,
+        cancel_check: Optional[Callable[[], bool]] = None
     ):
         """
         Initialize the module.
@@ -44,10 +46,13 @@ class BaseModule(ABC):
             domain: Target domain (e.g., 'corp.local')
             resolver: Optional custom DNS resolver
             timeout: Default timeout for operations
+            cancel_check: Optional function that returns True if cancelled
         """
         self.domain = domain.lower().strip('.')
         self.timeout = timeout
         self.discovered: Dict[str, Optional[str]] = {}
+        self._cancel_check = cancel_check
+        self._cancelled = False
 
         # Use provided resolver or create a new one
         if resolver:
@@ -55,6 +60,19 @@ class BaseModule(ABC):
         else:
             from ..utils.dns_resolver import InternalDNSResolver
             self.resolver = InternalDNSResolver(timeout=timeout)
+
+    def is_cancelled(self) -> bool:
+        """Check if the module should stop"""
+        if self._cancelled:
+            return True
+        if self._cancel_check and self._cancel_check():
+            self._cancelled = True
+            return True
+        return False
+
+    def cancel(self):
+        """Cancel the module"""
+        self._cancelled = True
 
     @abstractmethod
     def enumerate(self, **kwargs) -> Dict[str, Optional[str]]:
