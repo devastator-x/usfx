@@ -24,6 +24,15 @@ class OutputFormat(Enum):
     TXT = "txt"
 
 
+class PipelineMode(Enum):
+    """Pipeline output modes for integration with other tools"""
+    NONE = "none"        # Normal output
+    SUBS = "subs"        # Only subdomains (one per line)
+    WEB = "web"          # Only web servers (URLs)
+    IPS = "ips"          # Only IP addresses
+    JSON = "json"        # JSON to stdout (no banner/progress)
+
+
 @dataclass
 class ScanConfig:
     """Configuration for a subdomain scan"""
@@ -49,9 +58,15 @@ class ScanConfig:
     reverse_dns_ranges: List[str] = field(default_factory=list)  # CIDR ranges
     vhost_ips: List[str] = field(default_factory=list)  # IPs for vhost scanning
 
+    # Extended scan options
+    takeover: bool = False  # Enable subdomain takeover detection
+    web_tech: bool = False  # Enable web technology detection
+    web_ports: List[int] = field(default_factory=lambda: [80, 443, 8080, 8443])
+
     # Output configuration
     output_file: Optional[Path] = None
     output_format: OutputFormat = OutputFormat.JSON
+    pipeline_mode: PipelineMode = field(default_factory=lambda: PipelineMode.NONE)
 
     # Verbosity
     verbose: bool = False
@@ -92,10 +107,18 @@ class ScanConfig:
             "recursive_enum",
             "vhost_scanner",
             "tls_analyzer",
+            "takeover",
+            "web_tech",
         }
 
         if self.modules is None:
-            return all_modules
+            # Default: exclude takeover and web_tech unless explicitly enabled
+            enabled = all_modules - {"takeover", "web_tech"}
+            if self.takeover:
+                enabled.add("takeover")
+            if self.web_tech:
+                enabled.add("web_tech")
+            return enabled
 
         return self.modules & all_modules
 
@@ -121,6 +144,28 @@ class ModuleResult:
 
 
 @dataclass
+class TakeoverResult:
+    """Takeover vulnerability result"""
+    subdomain: str
+    cname: str
+    service: str
+    status: str  # "vulnerable" or "potential"
+    reason: str
+
+
+@dataclass
+class WebTechResult:
+    """Web technology detection result"""
+    subdomain: str
+    url: str
+    port: int
+    status: int
+    title: Optional[str]
+    server: Optional[str]
+    technologies: List[str]
+
+
+@dataclass
 class ScanResult:
     """Complete scan result"""
     domain: str
@@ -130,3 +175,7 @@ class ScanResult:
     duration_seconds: float
     dns_servers_used: List[str]
     config: ScanConfig
+
+    # Extended results
+    takeover_results: List[TakeoverResult] = field(default_factory=list)
+    web_tech_results: List[WebTechResult] = field(default_factory=list)

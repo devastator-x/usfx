@@ -34,6 +34,7 @@ class Phase(Enum):
     DNS_ENUMERATION = "dns_enumeration"
     EXTENSION = "extension"
     VALIDATION = "validation"
+    EXTENDED = "extended"  # Takeover detection, web tech analysis
 
 
 @dataclass
@@ -67,6 +68,9 @@ class OrchestrationState:
     phase_results: List[PhaseResult] = field(default_factory=list)
     started_at: float = field(default_factory=time.time)
     is_cancelled: bool = False
+    # Extended results
+    takeover_results: List[dict] = field(default_factory=list)
+    web_tech_results: List[dict] = field(default_factory=list)
 
 
 class SubdomainOrchestrator:
@@ -75,9 +79,10 @@ class SubdomainOrchestrator:
     # Phase weight for overall progress calculation
     PHASE_WEIGHTS = {
         Phase.QUICK_DISCOVERY: (0, 15),      # 0-15%
-        Phase.DNS_ENUMERATION: (15, 60),     # 15-60%
-        Phase.EXTENSION: (60, 90),           # 60-90%
-        Phase.VALIDATION: (90, 100),         # 90-100%
+        Phase.DNS_ENUMERATION: (15, 55),     # 15-55%
+        Phase.EXTENSION: (55, 80),           # 55-80%
+        Phase.VALIDATION: (80, 90),          # 80-90%
+        Phase.EXTENDED: (90, 100),           # 90-100%
     }
 
     def __init__(
@@ -293,12 +298,24 @@ class SubdomainOrchestrator:
     def _get_enabled_modules(self) -> Set[str]:
         """Get set of enabled module names"""
         if self.config and self.config.modules:
-            return self.config.modules
-        return {
-            "zone_transfer", "dns_records", "dns_bruteforce", "dnssec_walker",
-            "reverse_dns", "cname_chaser", "permutation", "recursive_enum",
-            "vhost_scanner", "tls_analyzer"
-        }
+            # Start with user-specified modules
+            modules = set(self.config.modules)
+        else:
+            # Default modules
+            modules = {
+                "zone_transfer", "dns_records", "dns_bruteforce", "dnssec_walker",
+                "reverse_dns", "cname_chaser", "permutation", "recursive_enum",
+                "vhost_scanner", "tls_analyzer"
+            }
+
+        # Add extended modules if enabled via config flags (regardless of -m)
+        if self.config:
+            if self.config.takeover:
+                modules.add("takeover")
+            if self.config.web_tech:
+                modules.add("web_tech")
+
+        return modules
 
     def run_phase1_quick_discovery(self) -> PhaseResult:
         """Phase 1: Quick Discovery - Zone Transfer and DNS Records"""
@@ -532,6 +549,116 @@ class SubdomainOrchestrator:
             duration_seconds=time.time() - phase_start
         )
 
+    def run_phase5_extended(self) -> PhaseResult:
+        """Phase 5: Extended - Takeover detection and Web technology analysis"""
+        from .modules.takeover import TakeoverDetector
+        from .modules.web_tech import WebTechDetector
+
+        phase_start = time.time()
+        results = []
+        enabled = self._get_enabled_modules()
+
+        threads = self.config.threads if self.config else 10
+        timeout = self.config.timeout if self.config else 5.0
+        web_ports = self.config.web_ports if self.config else [80, 443, 8080, 8443]
+
+        # Get current known subdomains
+        with self._results_lock:
+            known_subs = {k: v.get('ip') for k, v in self.state.discovered.items()}
+
+        if not known_subs:
+            logger.info("No subdomains found for extended analysis")
+            self._update_progress(Phase.EXTENDED, "complete", 100)
+            return PhaseResult(
+                phase=Phase.EXTENDED,
+                modules=[],
+                total_found=0,
+                duration_seconds=time.time() - phase_start
+            )
+
+        # Run takeover detection
+        if "takeover" in enabled:
+            self._update_progress(Phase.EXTENDED, "takeover", 0)
+            try:
+                takeover_module = TakeoverDetector(
+                    self.domain, self.resolver, threads=threads
+                )
+                takeover_module.enumerate(known_subs=known_subs)
+
+                # Store results
+                self.state.takeover_results = takeover_module.get_all_findings()
+
+                logger.info(f"Takeover check: {len(takeover_module.get_vulnerable())} vulnerable, "
+                           f"{len(takeover_module.get_potential())} potential")
+
+                results.append(ModuleResult(
+                    module_name="takeover",
+                    found_count=len(self.state.takeover_results),
+                    subdomains={},
+                    duration_seconds=0
+                ))
+            except Exception as e:
+                logger.error(f"Takeover detection failed: {e}")
+                results.append(ModuleResult(
+                    module_name="takeover",
+                    found_count=0,
+                    subdomains={},
+                    duration_seconds=0,
+                    error=str(e)
+                ))
+
+        # Run web technology detection
+        if "web_tech" in enabled:
+            self._update_progress(Phase.EXTENDED, "web_tech", 50)
+            try:
+                web_tech_module = WebTechDetector(
+                    self.domain, self.resolver,
+                    threads=threads, timeout=timeout, ports=web_ports
+                )
+                web_tech_module.enumerate(known_subs=known_subs)
+
+                # Store results - convert to list of dicts
+                web_servers = web_tech_module.get_web_servers()
+                self.state.web_tech_results = []
+                for subdomain, info in web_servers.items():
+                    for server in info.get('web_servers', []):
+                        self.state.web_tech_results.append({
+                            'subdomain': subdomain,
+                            'url': server['url'],
+                            'port': server['port'],
+                            'status': server['status'],
+                            'title': server.get('title'),
+                            'server': server.get('server'),
+                            'technologies': list(info.get('technologies', [])),
+                        })
+
+                logger.info(f"Web tech detection: {len(self.state.web_tech_results)} web servers found")
+
+                results.append(ModuleResult(
+                    module_name="web_tech",
+                    found_count=len(self.state.web_tech_results),
+                    subdomains={},
+                    duration_seconds=0
+                ))
+            except Exception as e:
+                logger.error(f"Web tech detection failed: {e}")
+                results.append(ModuleResult(
+                    module_name="web_tech",
+                    found_count=0,
+                    subdomains={},
+                    duration_seconds=0,
+                    error=str(e)
+                ))
+
+        self._update_progress(Phase.EXTENDED, "complete", 100)
+
+        return PhaseResult(
+            phase=Phase.EXTENDED,
+            modules=results,
+            total_found=len(self.state.takeover_results) + len(self.state.web_tech_results),
+            duration_seconds=time.time() - phase_start
+        )
+
     def cancel(self):
         """Cancel the orchestration"""
         self.state.is_cancelled = True
@@ -561,6 +688,14 @@ class SubdomainOrchestrator:
         # Phase 4: Validation
         result = self.run_phase4_validation()
         self.state.phase_results.append(result)
+        if self.state.is_cancelled:
+            return self.state
+
+        # Phase 5: Extended (Takeover, Web Tech) - only if enabled
+        enabled = self._get_enabled_modules()
+        if "takeover" in enabled or "web_tech" in enabled:
+            result = self.run_phase5_extended()
+            self.state.phase_results.append(result)
 
         logger.info(f"Enumeration complete: {self.state.total_found} subdomains found")
         return self.state

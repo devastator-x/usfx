@@ -12,6 +12,8 @@ Offline-capable modules for subdomain enumeration:
 - recursive_enum: Sub-subdomain discovery
 - vhost_scanner: Host header brute force
 - tls_analyzer: TLS certificate SAN extraction
+- takeover: Subdomain takeover vulnerability detection
+- web_tech: Web technology detection (Wappalyzer)
 """
 
 from .base import BaseModule
@@ -25,6 +27,8 @@ from .permutation import PermutationEngine
 from .recursive_enum import RecursiveEnumerator
 from .vhost_scanner import VHostScanner
 from .tls_analyzer import TLSAnalyzer
+from .takeover import TakeoverDetector
+from .web_tech import WebTechDetector
 
 __all__ = [
     "BaseModule",
@@ -38,4 +42,6 @@ __all__ = [
     "RecursiveEnumerator",
     "VHostScanner",
     "TLSAnalyzer",
+    "TakeoverDetector",
+    "WebTechDetector",
 ]

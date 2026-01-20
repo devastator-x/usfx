@@ -15,7 +15,7 @@ import logging
 import time
 from typing import List, Optional
 
-from .config import ModuleResult, ScanConfig, ScanResult, SubdomainResult
+from .config import ModuleResult, ScanConfig, ScanResult, SubdomainResult, TakeoverResult, WebTechResult
 from .orchestrator import SubdomainOrchestrator
 
 logger = logging.getLogger(__name__)
@@ -105,6 +105,30 @@ class SubdomainEngine:
                         error=module.error
                     ))
 
+            # Build takeover results
+            takeover_results = []
+            for t in state.takeover_results:
+                takeover_results.append(TakeoverResult(
+                    subdomain=t['subdomain'],
+                    cname=t['cname'],
+                    service=t['service'],
+                    status=t['status'],
+                    reason=t['reason']
+                ))
+
+            # Build web tech results
+            web_tech_results = []
+            for w in state.web_tech_results:
+                web_tech_results.append(WebTechResult(
+                    subdomain=w['subdomain'],
+                    url=w['url'],
+                    port=w['port'],
+                    status=w['status'],
+                    title=w.get('title'),
+                    server=w.get('server'),
+                    technologies=w.get('technologies', [])
+                ))
+
             return ScanResult(
                 domain=config.domain,
                 total_found=state.total_found,
@@ -112,7 +136,9 @@ class SubdomainEngine:
                 module_results=module_results,
                 duration_seconds=duration,
                 dns_servers_used=resolver.dns_servers,
-                config=config
+                config=config,
+                takeover_results=takeover_results,
+                web_tech_results=web_tech_results
             )
 
         except Exception as e:

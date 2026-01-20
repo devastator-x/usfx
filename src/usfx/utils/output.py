@@ -2,7 +2,7 @@
 Output Formatter
 
 Handles formatting and writing scan results to various formats:
-JSON, CSV, and TXT.
+JSON, CSV, TXT, and pipeline modes.
 """
 
 import csv
@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import List, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ..config import ScanResult, SubdomainResult
+    from ..config import PipelineMode, ScanResult, SubdomainResult, TakeoverResult, WebTechResult
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +58,34 @@ class OutputFormatter:
                 for m in result.module_results
             ]
         }
+
+        # Add takeover results if present
+        if result.takeover_results:
+            data['takeover_vulnerabilities'] = [
+                {
+                    'subdomain': t.subdomain,
+                    'cname': t.cname,
+                    'service': t.service,
+                    'status': t.status,
+                    'reason': t.reason,
+                }
+                for t in result.takeover_results
+            ]
+
+        # Add web tech results if present
+        if result.web_tech_results:
+            data['web_technologies'] = [
+                {
+                    'subdomain': w.subdomain,
+                    'url': w.url,
+                    'port': w.port,
+                    'status': w.status,
+                    'title': w.title,
+                    'server': w.server,
+                    'technologies': w.technologies,
+                }
+                for w in result.web_tech_results
+            ]
 
         if pretty:
             return json.dumps(data, indent=2, ensure_ascii=False)
@@ -113,6 +141,50 @@ class OutputFormatter:
                 lines.append(s.subdomain)
 
         return '\n'.join(lines)
+
+    @staticmethod
+    def to_pipeline(result: 'ScanResult', mode: 'PipelineMode') -> str:
+        """
+        Convert scan result to pipeline output format.
+
+        Args:
+            result: ScanResult object
+            mode: Pipeline mode (SUBS, WEB, IPS, JSON)
+
+        Returns:
+            Pipeline output string
+        """
+        from ..config import PipelineMode
+
+        if mode == PipelineMode.SUBS:
+            # One subdomain per line
+            return '\n'.join(s.subdomain for s in result.subdomains)
+
+        elif mode == PipelineMode.WEB:
+            # Web URLs from web tech results
+            urls = set()
+            for w in result.web_tech_results:
+                urls.add(w.url)
+            # If no web tech results, generate URLs from active subdomains
+            if not urls:
+                for s in result.subdomains:
+                    if s.is_active:
+                        urls.add(f"https://{s.subdomain}")
+            return '\n'.join(sorted(urls))
+
+        elif mode == PipelineMode.IPS:
+            # Unique IP addresses
+            ips = set()
+            for s in result.subdomains:
+                if s.ip:
+                    ips.add(s.ip)
+            return '\n'.join(sorted(ips))
+
+        elif mode == PipelineMode.JSON:
+            # JSON to stdout (no pretty print for piping)
+            return OutputFormatter.to_json(result, pretty=False)
+
+        return ''
 
     @staticmethod
     def write_file(
@@ -382,6 +454,104 @@ class ConsoleOutput:
             self.console.print(f"[bold yellow]Warning:[/bold yellow] {message}")
         else:
             print(f"Warning: {message}")
+
+    def print_takeover_results(self, takeover_results: List['TakeoverResult']) -> None:
+        """Print takeover vulnerability results"""
+        if self.quiet or not takeover_results:
+            return
+
+        vulnerable = [t for t in takeover_results if t.status == 'vulnerable']
+        potential = [t for t in takeover_results if t.status == 'potential']
+
+        if self.use_rich:
+            from rich.table import Table
+
+            if vulnerable:
+                self.console.print(f"\n[bold red]⚠ Takeover Vulnerabilities Found: {len(vulnerable)}[/bold red]")
+                table = Table()
+                table.add_column("Subdomain", style="red")
+                table.add_column("CNAME", style="yellow")
+                table.add_column("Service", style="cyan")
+                table.add_column("Reason", style="dim")
+
+                for t in vulnerable:
+                    table.add_row(t.subdomain, t.cname, t.service, t.reason)
+
+                self.console.print(table)
+
+            if potential:
+                self.console.print(f"\n[bold yellow]Potential Takeover Issues: {len(potential)}[/bold yellow]")
+                for t in potential[:10]:
+                    self.console.print(f"  [dim]•[/dim] {t.subdomain} → {t.cname} ({t.service})")
+                if len(potential) > 10:
+                    self.console.print(f"  [dim]... and {len(potential) - 10} more[/dim]")
+        else:
+            if vulnerable:
+                print(f"\n⚠ Takeover Vulnerabilities Found: {len(vulnerable)}")
+                print("-" * 60)
+                for t in vulnerable:
+                    print(f"  {t.subdomain} -> {t.cname} ({t.service})")
+                    print(f"    Reason: {t.reason}")
+
+            if potential:
+                print(f"\nPotential Takeover Issues: {len(potential)}")
+                for t in potential[:10]:
+                    print(f"  • {t.subdomain} → {t.cname} ({t.service})")
+                if len(potential) > 10:
+                    print(f"  ... and {len(potential) - 10} more")
+
+    def print_web_tech_results(self, web_tech_results: List['WebTechResult']) -> None:
+        """Print web technology detection results"""
+        if self.quiet or not web_tech_results:
+            return
+
+        if self.use_rich:
+            from rich.table import Table
+
+            self.console.print(f"\n[bold blue]Web Technologies Detected: {len(web_tech_results)} servers[/bold blue]")
+
+            table = Table()
+            table.add_column("URL", style="cyan")
+            table.add_column("Status", style="green")
+            table.add_column("Title", style="white", max_width=30)
+            table.add_column("Technologies", style="yellow")
+
+            for w in web_tech_results[:30]:
+                techs = ', '.join(w.technologies[:5]) if w.technologies else '-'
+                if len(w.technologies) > 5:
+                    techs += f' (+{len(w.technologies) - 5})'
+                title = (w.title[:27] + '...') if w.title and len(w.title) > 30 else (w.title or '-')
+                table.add_row(w.url, str(w.status), title, techs)
+
+            if len(web_tech_results) > 30:
+                table.add_row("...", "", f"({len(web_tech_results) - 30} more)", "")
+
+            self.console.print(table)
+
+            # Technology summary
+            tech_count = {}
+            for w in web_tech_results:
+                for tech in w.technologies:
+                    tech_count[tech] = tech_count.get(tech, 0) + 1
+
+            if tech_count:
+                sorted_techs = sorted(tech_count.items(), key=lambda x: x[1], reverse=True)[:10]
+                self.console.print("\n[bold]Top Technologies:[/bold]")
+                for tech, count in sorted_techs:
+                    self.console.print(f"  [dim]•[/dim] {tech}: {count}")
+        else:
+            print(f"\nWeb Technologies Detected: {len(web_tech_results)} servers")
+            print("-" * 60)
+
+            for w in web_tech_results[:30]:
+                techs = ', '.join(w.technologies[:5]) if w.technologies else '-'
+                print(f"  {w.url} [{w.status}]")
+                if w.title:
+                    print(f"    Title: {w.title[:50]}")
+                print(f"    Tech: {techs}")
+
+            if len(web_tech_results) > 30:
+                print(f"  ... ({len(web_tech_results) - 30} more)")
 
     def create_progress(self):
         """Create a progress context manager"""

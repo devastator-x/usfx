@@ -20,7 +20,7 @@ _current_engine = None
 _interrupted = False
 
 from . import __version__
-from .config import OutputFormat, ScanConfig, WordlistSize
+from .config import OutputFormat, PipelineMode, ScanConfig, WordlistSize
 from .engine import SubdomainEngine
 from .utils.output import ConsoleOutput, OutputFormatter
 
@@ -60,7 +60,9 @@ def parse_modules(modules_str: Optional[str]) -> Optional[set]:
         'permutation',
         'recursive', 'recursive_enum',
         'vhost', 'vhost_scanner',
-        'tls', 'tls_analyzer'
+        'tls', 'tls_analyzer',
+        'takeover',
+        'webtech', 'web_tech',
     }
 
     # Normalize module names
@@ -74,6 +76,7 @@ def parse_modules(modules_str: Optional[str]) -> Optional[set]:
         'recursive': 'recursive_enum',
         'vhost': 'vhost_scanner',
         'tls': 'tls_analyzer',
+        'webtech': 'web_tech',
     }
 
     modules = set()
@@ -153,6 +156,43 @@ def parse_modules(modules_str: Optional[str]) -> Optional[set]:
     help='IP address for virtual host scanning'
 )
 @click.option(
+    '--takeover',
+    is_flag=True,
+    help='Enable subdomain takeover vulnerability detection'
+)
+@click.option(
+    '--web-tech',
+    'web_tech',
+    is_flag=True,
+    help='Enable web technology detection (Wappalyzer)'
+)
+@click.option(
+    '--web-ports',
+    'web_ports',
+    default='80,443,8080,8443',
+    help='Comma-separated ports for web tech scanning (default: 80,443,8080,8443)'
+)
+@click.option(
+    '--pipe-subs',
+    is_flag=True,
+    help='Pipeline mode: output only subdomains (one per line)'
+)
+@click.option(
+    '--pipe-web',
+    is_flag=True,
+    help='Pipeline mode: output only web URLs (one per line)'
+)
+@click.option(
+    '--pipe-ips',
+    is_flag=True,
+    help='Pipeline mode: output only IP addresses (one per line)'
+)
+@click.option(
+    '--pipe-json',
+    is_flag=True,
+    help='Pipeline mode: JSON output to stdout (no banner/progress)'
+)
+@click.option(
     '-v', '--verbose',
     is_flag=True,
     help='Enable verbose output'
@@ -180,6 +220,13 @@ def main(
     modules_str: Optional[str],
     reverse_ranges: Tuple[str, ...],
     vhost_ips: Tuple[str, ...],
+    takeover: bool,
+    web_tech: bool,
+    web_ports: str,
+    pipe_subs: bool,
+    pipe_web: bool,
+    pipe_ips: bool,
+    pipe_json: bool,
     verbose: bool,
     quiet: bool,
     no_color: bool
@@ -220,7 +267,41 @@ def main(
 
         # Scan with vhost discovery on specific IP
         usfx corp.local -d 10.0.0.1 --vhost-ip 192.168.1.100
+
+        # Enable subdomain takeover detection
+        usfx corp.local -d 10.0.0.1 --takeover
+
+        # Enable web technology detection
+        usfx corp.local -d 10.0.0.1 --web-tech
+
+        # Pipeline mode: subdomains only (for piping to other tools)
+        usfx corp.local -d 10.0.0.1 --pipe-subs | httpx
+
+        # Pipeline mode: JSON to stdout
+        usfx corp.local -d 10.0.0.1 --pipe-json | jq '.subdomains'
     """
+    # Determine pipeline mode
+    pipeline_mode = PipelineMode.NONE
+    if pipe_subs:
+        pipeline_mode = PipelineMode.SUBS
+    elif pipe_web:
+        pipeline_mode = PipelineMode.WEB
+    elif pipe_ips:
+        pipeline_mode = PipelineMode.IPS
+    elif pipe_json:
+        pipeline_mode = PipelineMode.JSON
+
+    # Pipeline modes force quiet mode (no banner/progress)
+    if pipeline_mode != PipelineMode.NONE:
+        quiet = True
+
+    # Parse web ports
+    try:
+        parsed_web_ports = [int(p.strip()) for p in web_ports.split(',')]
+    except ValueError:
+        click.echo("Error: Invalid web ports format", err=True)
+        sys.exit(1)
+
     # Setup logging
     setup_logging(verbose, quiet)
 
@@ -249,8 +330,12 @@ def main(
             modules=modules,
             reverse_dns_ranges=list(reverse_ranges),
             vhost_ips=list(vhost_ips),
+            takeover=takeover,
+            web_tech=web_tech,
+            web_ports=parsed_web_ports,
             output_file=Path(output_path) if output_path else None,
             output_format=OutputFormat(output_format),
+            pipeline_mode=pipeline_mode,
             verbose=verbose,
             quiet=quiet
         )
@@ -332,9 +417,22 @@ def main(
         signal.signal(signal.SIGINT, original_handler)
         _current_engine = None
 
-    # Print results
-    console.print_result_table(result)
-    console.print_summary(result)
+    # Handle pipeline mode output
+    if pipeline_mode != PipelineMode.NONE:
+        output = OutputFormatter.to_pipeline(result, pipeline_mode)
+        click.echo(output)
+    else:
+        # Print results
+        console.print_result_table(result)
+        console.print_summary(result)
+
+        # Print takeover results if available
+        if result.takeover_results:
+            console.print_takeover_results(result.takeover_results)
+
+        # Print web tech results if available
+        if result.web_tech_results:
+            console.print_web_tech_results(result.web_tech_results)
 
     # Write output file if requested
     if config.output_file:
