@@ -30,22 +30,21 @@ FEATURES
 INSTALLATION
 ------------
 
+From PyPI (Recommended):
+
+    pip install usfx
+
+From GitHub Releases:
+
+    # Download wheel from:
+    # https://github.com/devastator-x/usfx/releases/latest
+    pip install usfx-1.1.0-py3-none-any.whl
+
 From Source (Development):
 
     git clone https://github.com/devastator-x/usfx.git
     cd usfx
-    python3 -m venv venv
-    source venv/bin/activate
     pip install -e .
-    usfx --version
-
-From PyPI (when available):
-
-    pip install usfx
-
-From Built Package:
-
-    pip install dist/usfx-1.1.0-py3-none-any.whl
 
 
 QUICK START
