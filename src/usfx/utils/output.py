@@ -376,6 +376,13 @@ class ConsoleOutput:
         else:
             print(f"Error: {message}")
 
+    def print_warning(self, message: str) -> None:
+        """Print warning message"""
+        if self.use_rich:
+            self.console.print(f"[bold yellow]Warning:[/bold yellow] {message}")
+        else:
+            print(f"Warning: {message}")
+
     def create_progress(self):
         """Create a progress context manager"""
         if self.use_rich and not self.quiet:

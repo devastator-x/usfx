@@ -266,6 +266,15 @@ def main(
         modules=enabled_modules
     )
 
+    # Check DNS connectivity if custom DNS servers specified
+    if dns_servers and not quiet:
+        from .utils.dns_resolver import InternalDNSResolver
+        test_resolver = InternalDNSResolver(dns_servers=list(dns_servers), timeout=timeout)
+        is_reachable, error_msg = test_resolver.check_connectivity(domain)
+        if not is_reachable:
+            console.print_warning(f"DNS connectivity issue: {error_msg}")
+            console.print_warning("Scan may produce incomplete results")
+
     # Create engine and run scan
     global _current_engine, _interrupted
     engine = SubdomainEngine()
@@ -341,8 +350,8 @@ def main(
             console.print_error(f"Failed to write output file: {e}")
             sys.exit(1)
 
-    # Exit with appropriate code
-    sys.exit(0 if result.total_found > 0 else 1)
+    # Exit with success (0) - finding 0 subdomains is not an error
+    sys.exit(0)
 
 
 if __name__ == '__main__':

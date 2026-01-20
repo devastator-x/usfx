@@ -362,3 +362,34 @@ class InternalDNSResolver:
             timeout=timeout if timeout is not None else self.timeout,
             lifetime=lifetime if lifetime is not None else self.lifetime
         )
+
+    def check_connectivity(self, test_domain: str = "google.com") -> Tuple[bool, Optional[str]]:
+        """
+        Check if DNS servers are reachable by performing a test query.
+
+        Args:
+            test_domain: Domain to use for connectivity test (default: google.com)
+
+        Returns:
+            Tuple of (is_reachable, error_message).
+            If reachable, returns (True, None).
+            If not reachable, returns (False, error_description).
+        """
+        try:
+            # Try a simple A record query
+            answers = self.resolver.resolve(test_domain, 'A')
+            if answers:
+                return (True, None)
+            return (False, "No response received")
+        except dns.resolver.NoNameservers:
+            return (False, f"DNS servers not reachable: {', '.join(self.dns_servers)}")
+        except dns.exception.Timeout:
+            return (False, f"DNS query timed out (servers: {', '.join(self.dns_servers)})")
+        except dns.resolver.NXDOMAIN:
+            # Domain doesn't exist, but DNS is working
+            return (True, None)
+        except dns.resolver.NoAnswer:
+            # No answer for this query type, but DNS is working
+            return (True, None)
+        except Exception as e:
+            return (False, f"DNS error: {str(e)}")
