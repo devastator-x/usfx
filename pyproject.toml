@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "usfx"
-version = "1.2.0"
+version = "1.2.1"
 description = "USFX - Ultimate Subdomain Finder X - Discover subdomains via custom DNS servers"
 readme = "README.txt"
 license = "MIT"

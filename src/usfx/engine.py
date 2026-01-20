@@ -77,12 +77,19 @@ class SubdomainEngine:
 
             duration = time.time() - start_time
 
+            # Invalid IPs to filter out
+            INVALID_IPS = {'0.0.0.0', '127.0.0.1', '::1', ''}
+
             # Build result
             subdomains = []
             for subdomain, info in state.discovered.items():
+                ip = info.get('ip')
+                # Skip invalid IPs
+                if ip in INVALID_IPS or ip is None:
+                    continue
                 subdomains.append(SubdomainResult(
                     subdomain=subdomain,
-                    ip=info.get('ip'),
+                    ip=ip,
                     discovered_by=info.get('discovered_by', 'unknown'),
                     is_active=info.get('is_active', False),
                 ))
@@ -131,7 +138,7 @@ class SubdomainEngine:
 
             return ScanResult(
                 domain=config.domain,
-                total_found=state.total_found,
+                total_found=len(subdomains),  # Use filtered count
                 subdomains=subdomains,
                 module_results=module_results,
                 duration_seconds=duration,
